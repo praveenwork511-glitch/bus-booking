@@ -27,7 +27,9 @@ except ImportError:
 
 app = Flask(__name__, 
             static_folder='static', 
+            static_url_path='/static',
             template_folder='templates')
+
 # Use PostgreSQL from .env if available, else SQLite for development
 database_url = os.getenv('DATABASE_URL')
 if database_url:
