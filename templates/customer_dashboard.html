@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 velvetBus</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/search">Search Buses</a>
+                <div class="profile-icon">{{ current_user.first_name[0].upper() if current_user.first_name else 'U' }}</div>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard">
+            <div class="profile-section">
+                <div class="profile-header">
+                    <div class="profile-avatar">{{ current_user.first_name[0].upper() if current_user.first_name else 'U' }}</div>
+                    <div class="profile-info">
+                        <h2>{{ current_user.first_name }} {{ current_user.last_name }}</h2>
+                        <p>📧 {{ current_user.email }}</p>
+                        <p>📱 {{ current_user.phone }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="tab-section">
+                    <h3>👋 Upcoming Bookings</h3>
+                    {% if upcoming_bookings %}
+                        <div class="bookings-grid">
+                            {% for b, s, bus, r in upcoming_bookings %}
+                            <div class="booking-card">
+                                <div class="booking-header">
+                                    <h4>🚌 {{ bus.bus_name }} ({{ bus.bus_number }})</h4>
+                                    <span class="status confirmed">✅ {{ b.status }}</span>
+                                </div>
+                                <div class="booking-details">
+                                    <p><strong>📍 Route:</strong> {{ r.source }} → {{ r.destination }}</p>
+                                    <p><strong>📅 Date:</strong> {{ s.journey_date }}</p>
+                                    <p><strong>🕐 Departure:</strong> {{ s.departure_time }}</p>
+                                    <p><strong>🕑 Arrival:</strong> {{ s.arrival_time }}</p>
+                                    <p><strong>💺 Seat:</strong> {{ b.seat_number }}</p>
+                                    <p><strong>👤 Passenger:</strong> {{ b.passenger_name }}</p>
+                                    <p><strong>💰 Amount:</strong> ₹{{ b.total_fare }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>No upcoming bookings. <a href="/search">Book now!</a></p>
+                    {% endif %}
+                </div>
+
+                <div class="tab-section">
+                    <h3> Past Bookings</h3>
+                    {% if past_bookings %}
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Bus Name</th>
+                                    <th>Route</th>
+                                    <th>Date</th>
+                                    <th>Seat</th>
+                                    <th>Fare</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b, s, bus, r in past_bookings %}
+                                <tr>
+                                    <td>{{ bus.bus_name }} ({{ bus.bus_number }})</td>
+                                    <td>{{ r.source }} → {{ r.destination }}</td>
+                                    <td>{{ s.journey_date }} | {{ s.departure_time }} - {{ s.arrival_time }}</td>
+                                    <td>{{ b.seat_number }}</td>
+                                    <td>₹{{ b.total_fare }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>No past bookings.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 BusBook - Your Trusted Bus Booking Partner</p>
+    </footer>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

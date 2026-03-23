@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Bus Today - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 Bus Booking System</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/search">Search Bus</a>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.user_type == 'admin' %}
+                        <a href="/admin-dashboard">Admin</a>
+                    {% elif current_user.user_type == 'customer' %}
+                        <a href="/customer-dashboard">My Bookings</a>
+                    {% endif %}
+                    <div class="profile-icon">{{ current_user.first_name[0].upper() }}</div>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                    <a href="/register">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>🚌 Buses Departing Today</h2>
+            <p>Select a bus and book your seat now!</p>
+        </div>
+
+        {% if schedules %}
+        <div class="buses-today-section">
+            {% for schedule in schedules %}
+            <div class="bus-card-today">
+                <div class="bus-card-header">
+                    <div class="route-info">
+                        <h3>{{ schedule.route.source }} → {{ schedule.route.destination }}</h3>
+                        <p class="distance">Distance: {{ schedule.route.distance|default('N/A') }} km</p>
+                    </div>
+                    <div class="bus-type-badge">{{ schedule.bus.bus_type.name }}</div>
+                </div>
+
+                <div class="bus-card-body">
+                    <div class="bus-details-grid">
+                        <div class="detail-item">
+                            <span class="label">🚌 Bus Name:</span>
+                            <span class="value">{{ schedule.bus.bus_name }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">🔢 Bus Number:</span>
+                            <span class="value">{{ schedule.bus.bus_number }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">⏰ Departure:</span>
+                            <span class="value">{{ schedule.departure_time }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">🏁 Arrival:</span>
+                            <span class="value">{{ schedule.arrival_time }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">💰 Fare per Seat:</span>
+                            <span class="value price">₹{{ schedule.fare }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">💺 Available Seats:</span>
+                            <span class="value">{{ schedule.bus.total_seats - (booked_seats[schedule.id]|default(0)|int) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bus-card-footer">
+                    {% if current_user.is_authenticated %}
+                        <a href="/book/{{ schedule.id }}" class="btn btn-primary btn-large">Select & Book Seats</a>
+                    {% else %}
+                        <a href="/login?next=/book/{{ schedule.id }}" class="btn btn-primary btn-large">Login to Book</a>
+                    {% endif %}
+                    <a href="/search?source={{ schedule.route.source }}&destination={{ schedule.route.destination }}" class="btn btn-secondary">View More Times</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <h3>📭 No Buses Available Today</h3>
+            <p>There are no buses operating on this route today. Please try another date or route.</p>
+            <a href="/search" class="btn btn-primary" style="margin-top: 20px;">Search Buses</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Bus Booking App. All rights reserved.</p>
+    </footer>
+
+    <style>
+        .page-header {
+            text-align: center;
+            margin: 40px 0 50px;
+            padding: 30px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .page-header h2 {
+            color: var(--accent-1);
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .page-header p {
+            color: var(--white);
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .buses-today-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+
+        .bus-card-today {
+            background: rgba(26, 26, 46, 0.4);
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .bus-card-today:hover {
+            border-color: var(--accent-1);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .bus-card-header {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(255, 0, 110, 0.1));
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .route-info h3 {
+            color: var(--accent-1);
+            margin: 0 0 8px;
+            font-size: 20px;
+        }
+
+        .route-info .distance {
+            color: rgba(224, 224, 224, 0.7);
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .bus-type-badge {
+            background: linear-gradient(135deg, var(--accent-2), #ff1493);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+
+        .bus-card-body {
+            padding: 20px;
+            flex: 1;
+        }
+
+        .bus-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-item .label {
+            color: var(--accent-1);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .detail-item .value {
+            color: var(--white);
+            font-size: 15px;
+        }
+
+        .detail-item .value.price {
+            color: var(--accent-3);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .bus-card-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(0, 212, 255, 0.2);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .bus-card-footer .btn {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .alert {
+            text-align: center;
+            padding: 40px 30px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 12px;
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            margin: 40px 0;
+        }
+
+        .alert h3 {
+            color: var(--accent-1);
+            margin-top: 0;
+            font-size: 24px;
+        }
+
+        .alert p {
+            color: var(--white);
+            font-size: 16px;
+            margin: 15px 0 0;
+        }
+
+        @media (max-width: 768px) {
+            .buses-today-section {
+                grid-template-columns: 1fr;
+            }
+
+            .bus-details-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bus-card-footer {
+                flex-direction: column;
+            }
+
+            .bus-card-footer .btn {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .page-header h2 {
+                font-size: 24px;
+            }
+        }
+    </style>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

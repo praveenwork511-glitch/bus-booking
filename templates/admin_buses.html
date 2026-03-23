@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routes Management - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 BusBook Admin</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/admin-dashboard">Dashboard</a>
+                <a href="/admin/buses">Routes List</a>
+                <a href="/bus-tracking">Track Bus</a>
+                {% if current_user.is_authenticated %}
+                    <div class="profile-icon">{{ current_user.first_name[0].upper() }}</div>
+                    <a href="/logout">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="admin-dashboard">
+            <div class="dashboard-header">
+                <h2>🗺️ Routes Management System</h2>
+                <p>Monitor all active routes and their performance</p>
+            </div>
+
+            <div class="section">
+                <h3>📋 All Available Routes</h3>
+                <div class="routes-admin-table">
+                    <table class="routes-table">
+                        <thead>
+                            <tr>
+                                <th>📍 Route</th>
+                                <th>🗺️ Distance (km)</th>
+                                <th>🚌 Buses Operating</th>
+                                <th>📅 Schedules Today</th>
+                                <th>📊 Total Bookings</th>
+                                <th>💰 Revenue</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for route in routes_list %}
+                            <tr>
+                                <td><strong>{{ route.source }} → {{ route.destination }}</strong></td>
+                                <td>{{ route.distance|default('N/A') }}</td>
+                                <td><span class="badge">{{ route.bus_count }}</span></td>
+                                <td><span class="schedule-badge">{{ route.schedule_count }}</span></td>
+                                <td>{{ route.booking_count }}</td>
+                                <td>₹{{ route.revenue|int }}</td>
+                                <td>
+                                    {% if route.schedule_count > 0 %}
+                                        <span class="status-active">🟢 Active</span>
+                                    {% else %}
+                                        <span class="status-inactive">🔴 Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📊 Route Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Routes</h3>
+                        <div class="stat-number">{{ routes_list|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Routes</h3>
+                        <div class="stat-number">{{ routes_list|selectattr('schedule_count', 'gt', 0)|list|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Bookings</h3>
+                        <div class="stat-number">{{ (routes_list|map(attribute='booking_count')|sum) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Revenue</h3>
+                        <div class="stat-number">₹{{ (routes_list|map(attribute='revenue')|sum)|int }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <a href="/admin-dashboard" class="btn btn-primary">📊 Back to Dashboard</a>
+                    <a href="/bus-tracking" class="btn btn-secondary">🗺️ Track Bus Location</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 BusBook Admin Panel - Routes Management System</p>
+    </footer>
+
+    <style>
+        .routes-admin-table {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .schedule-badge {
+            background: linear-gradient(135deg, var(--accent-1) 0%, #0088cc 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, var(--accent-2) 0%, #ff3366 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .status-active {
+            color: var(--accent-3);
+            font-weight: 700;
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.15);
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .status-inactive {
+            color: #ff6b6b;
+            font-weight: 700;
+            padding: 6px 12px;
+            background: rgba(255, 107, 107, 0.15);
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .routes-table tbody tr {
+            break-inside: avoid;
+        }
+
+        @media (max-width: 768px) {
+            .routes-admin-table {
+                font-size: 12px;
+            }
+
+            .routes-table th,
+            .routes-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

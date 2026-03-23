@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 Bus Booking System - Admin Panel</h1>
+            <div class="nav-links">
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="admin-dashboard">
+            <h2>Admin Dashboard</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p class="stat-number">{{ total_users }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Bookings</h3>
+                    <p class="stat-number">{{ total_bookings }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <p class="stat-number">₹{{ "%.0f"|format(total_revenue) }}</p>
+                </div>
+            </div>
+
+            <div class="admin-sections">
+                <div class="section">
+                    <h3>System Controls</h3>
+                    <ul class="admin-menu">
+                        <li><a href="#">Manage Users</a></li>
+                        <li><a href="#">Manage Bus Owners</a></li>
+                        <li><a href="#">Manage Routes</a></li>
+                        <li><a href="#">View All Bookings</a></li>
+                        <li><a href="#">Payment Reports</a></li>
+                        <li><a href="#">System Settings</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Bus Booking App. All rights reserved.</p>
+    </footer>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

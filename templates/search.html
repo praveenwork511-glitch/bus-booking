@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Buses - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 BusBook</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/search">Search</a>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.user_type == 'customer' %}
+                        <a href="/customer-dashboard">My Bookings</a>
+                    {% elif current_user.user_type == 'owner' %}
+                        <a href="/owner-dashboard">My Buses</a>
+                    {% elif current_user.user_type == 'admin' %}
+                        <a href="/admin-dashboard">Admin</a>
+                    {% endif %}
+                    <div class="profile-icon">{{ current_user.first_name[0].upper() }}</div>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                    <a href="/register">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="search-section">
+            <h2>🔍 Find Your Perfect Bus</h2>
+            <form method="POST" class="search-form">
+                <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label for="source">📍 Departure City</label>
+                        <select name="source" id="source" required>
+                            <option value="">Select source city</option>
+                            {% set cities = [] %}
+                            {% for route in routes %}
+                                {% if route.source not in cities %}
+                                    {{ cities.append(route.source) }}
+                                    <option value="{{ route.source }}">{{ route.source }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="btn btn-swap" onclick="swapCities()" title="Swap Departure and Arrival">⇄</button>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label for="destination">📍 Arrival City</label>
+                        <select name="destination" id="destination" required>
+                            <option value="">Select destination city</option>
+                            {% set dest_cities = [] %}
+                            {% for route in routes %}
+                                {% if route.destination not in dest_cities %}
+                                    {{ dest_cities.append(route.destination) }}
+                                    <option value="{{ route.destination }}">{{ route.destination }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label for="journey_date">📅 Travel Date</label>
+                        <input type="date" name="journey_date" id="journey_date" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Search Buses</button>
+            </form>
+        </div>
+
+        {% if schedules %}
+        <div class="results-section">
+            <div class="filters-header">
+                <h3>✨ Available Buses ({{ schedules|length }})</h3>
+                
+            <div class="filters-header">
+                <h3>✨ Available Buses ({{ schedules|length }})</h3>
+                
+                <!-- Sleek Icon Filter Bar -->
+                <div class="icon-filter-bar">
+                    <div class="filter-pill active" onclick="filterBuses('all', this)" title="Show All">
+                        🚎 All
+                    </div>
+                    <div class="filter-pill" onclick="filterBuses('ac', this)" title="AC Only">
+                        ❄️ AC
+                    </div>
+                    <div class="filter-pill" onclick="filterBuses('sleeper', this)" title="Sleeper Only">
+                        🛏️ Sleeper
+                    </div>
+                    <div class="filter-pill sort-pill" onclick="sortBuses('price', this)" title="Sort by Price">
+                        💰 Sort Price
+                    </div>
+                    <div class="filter-pill sort-pill" onclick="sortBuses('departure', this)" title="Sort by Time">
+                        ⏰ Sort Time
+                    </div>
+                </div>
+            </div>
+
+            <table class="buses-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>🚌 Bus Operator</th>
+                        <th>Bus Type</th>
+                        <th>Route</th>
+                        <th>📅 Date</th>
+                        <th>⏰ Departure</th>
+                        <th>⏰ Arrival</th>
+                        <th>💰 Fare</th>
+                        <th>💺 Seats</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="busesList">
+                    {% for s, b, r, bt in schedules %}
+                    <tr class="bus-row" 
+                        data-bus-type="{{ bt.name }}" 
+                        data-operator="{{ b.bus_name.split()[0] }}"
+                        data-price="{{ s.fare }}"
+                        data-departure="{{ s.departure_time }}"
+                        data-arrival="{{ s.arrival_time }}"
+                        data-seats="{{ s.available_seats }}"
+                        data-departure-hour="{{ s.departure_time.hour }}">
+                        <td>
+                            {% if b.photo_filename %}
+                                <img src="/static/bus_photos/{{ b.photo_filename }}" alt="{{ b.bus_name }}" style="height: 60px; width: 100px; object-fit: cover; border-radius: 4px;">
+                            {% else %}
+                                <div style="height: 60px; width: 100px; background: #1a1f3f; border: 1px dashed #00f0ff; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px; border-radius: 4px;">No Photo</div>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ b.bus_name }}</strong></td>
+                        <td><span class="badge">{{ bt.name }}</span></td>
+                        <td>{{ r.source }} → {{ r.destination }}</td>
+                        <td>{{ s.journey_date }}</td>
+                        <td><strong>{{ s.departure_time }}</strong></td>
+                        <td>{{ s.arrival_time }}</td>
+                        <td><strong>₹{{ s.fare }}</strong></td>
+                        <td><strong>{{ s.available_seats }}</strong></td>
+                        <td>
+                            {% if current_user.is_authenticated %}
+                                <a href="/book/{{ s.id }}" class="btn btn-small btn-primary">Book Now</a>
+                            {% else %}
+                                <a href="{{ url_for('login', next=url_for('book', schedule_id=s.id)) }}" class="btn btn-small btn-primary">Book Now</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif request.method == 'POST' %}
+        <div class="alert alert-info">
+            ℹ️ No buses found for your search. Try different criteria or dates.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filtering & Sorting JavaScript -->
+    <script>
+        let currentSort = { type: null, asc: true };
+
+        // Sort buses
+        function sortBuses(sortBy, element) {
+            if(currentSort.type === sortBy) {
+                currentSort.asc = !currentSort.asc;
+            } else {
+                currentSort.type = sortBy;
+                currentSort.asc = true;
+            }
+            
+            document.querySelectorAll('.sort-pill').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            
+            const rows = Array.from(document.querySelectorAll('.bus-row'));
+            
+            rows.sort((a, b) => {
+                let aVal, bVal;
+                
+                if(sortBy === 'departure') {
+                    aVal = a.dataset.departure;
+                    bVal = b.dataset.departure;
+                } else if(sortBy === 'price') {
+                    aVal = parseInt(a.dataset.price);
+                    bVal = parseInt(b.dataset.price);
+                }
+                
+                if (aVal > bVal) return currentSort.asc ? 1 : -1;
+                if (aVal < bVal) return currentSort.asc ? -1 : 1;
+                return 0;
+            });
+            
+            const tbody = document.getElementById('busesList');
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Filter buses
+        function filterBuses(filterType, element) {
+            if(element) {
+                const filterBtns = document.querySelectorAll('.filter-pill:not(.sort-pill)');
+                filterBtns.forEach(btn => btn.classList.remove('active'));
+                element.classList.add('active');
+            }
+            
+            const rows = document.querySelectorAll('.bus-row');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                let show = true;
+                const busType = row.dataset.busType.toLowerCase();
+                
+                if (filterType === 'ac') {
+                    if (!busType.includes('ac') || busType.includes('non-ac')) show = false;
+                } else if (filterType === 'sleeper') {
+                    if (!busType.includes('sleeper')) show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+            
+            let message = document.querySelector('.no-results-filter');
+            if (!message) {
+                message = document.createElement('div');
+                message.className = 'alert alert-info no-results-filter';
+                document.querySelector('.results-section').appendChild(message);
+            }
+            
+            if (visibleCount === 0) {
+                message.textContent = '❌ No buses match your filter.';
+                message.style.display = 'block';
+            } else {
+                message.style.display = 'none';
+            }
+        }
+
+        // Swap departure and arrival cities
+        function swapCities() {
+            const source = document.getElementById('source');
+            const destination = document.getElementById('destination');
+            const temp = source.value;
+            source.value = destination.value;
+            destination.value = temp;
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.querySelectorAll('.filter-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('priceRange').value = 1500;
+            document.getElementById('priceValue').textContent = '1500';
+            document.querySelectorAll('.bus-row').forEach(row => row.style.display = '');
+            document.querySelector('.no-results-filter')?.remove();
+        }
+    </script>
+
+    <style>
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 30px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .filters-header h3 {
+            flex: 1;
+            margin: 0;
+            min-width: 200px;
+        }
+
+        .icon-filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-pill {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .filter-pill:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .filter-pill.active {
+            background: var(--accent-2);
+            border-color: var(--accent-2);
+            box-shadow: 0 0 10px rgba(255, 0, 110, 0.4);
+        }
+        
+        .filter-pill.sort-pill {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+        
+        .filter-pill.sort-pill.active {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-swap {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+            min-width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-swap:hover {
+            transform: scale(1.05) rotate(180deg);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .btn-swap:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 1024px) {
+            .filters-header {
+                flex-direction: column;
+            }
+            
+            .filter-sort-panel {
+                flex: 1;
+                width: 100%;
+                max-height: none;
+            }
+        }
+    </style>
+    </footer>
+    
+    <script>
+        // Set minimum date to today
+        document.querySelector('input[name="journey_date"]').min = new Date().toISOString().split('T')[0];
+    </script>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

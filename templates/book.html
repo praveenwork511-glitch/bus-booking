@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Bus - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 Bus Booking System</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/search">Search Bus</a>
+                <a href="/customer-dashboard">Dashboard</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="booking-section">
+            <h2>Book Your Seat</h2>
+            
+            <div class="trip-details">
+                <h3>Trip Details</h3>
+                <p><strong>Bus:</strong> {{ bus.bus_name }} ({{ bus.bus_number }})</p>
+                <p><strong>Bus Type:</strong> <span class="badge">{{ bus.bus_type.name }}</span></p>
+                <p><strong>Route:</strong> {{ route.source }} → {{ route.destination }}</p>
+                <p><strong>Date:</strong> {{ schedule.journey_date }}</p>
+                <p><strong>Departure:</strong> {{ schedule.departure_time }} | <strong>Arrival:</strong> {{ schedule.arrival_time }}</p>
+                <p><strong>Fare per seat:</strong> ₹{{ schedule.fare }}</p>
+            </div>
+
+            <div class="seat-selection">
+                {% if bus.bus_type.name in ['AC Sleeper', 'Non-AC Sleeper'] %}
+                    <!-- Price Pills mimicking the user photo -->
+                    <div class="price-filter-bar" style="margin-bottom: 20px; display: flex; gap: 10px;">
+                        <div class="filter-pill active">All</div>
+                        <div class="filter-pill">₹{{ schedule.fare }}</div>
+                    </div>
+                    
+                    <div class="sleeper-decks-container">
+                        <!-- Upper Deck -->
+                        <div class="deck-wrapper">
+                            <div class="deck-label"><span>Upper</span></div>
+                            <div class="sleeper-grid">
+                                {% set upper_seats = [] %}
+                                {% for seat_num in range(1, bus.total_seats + 1, 2) %}
+                                    {% set _ = upper_seats.append(seat_num) %}
+                                {% endfor %}
+                                
+                                {% for seat_num in upper_seats %}
+                                    {% set s_class = 'available clickable' %}
+                                    {% set gender_class = '' %}
+                                    {% set is_booked = False %}
+                                    {% if seat_num|string in booked_seats %}
+                                        {% set s_class = 'booked' %}
+                                        {% set is_booked = True %}
+                                        {% if seat_num % 11 == 0 %}{% set gender_class = 'female-booked' %}{% endif %}
+                                    {% else %}
+                                        {% if seat_num % 13 == 0 %}{% set gender_class = 'female-only' %}{% endif %}
+                                    {% endif %}
+
+                                    <div class="berth-item sleeper {{ s_class }} {{ gender_class }}" {% if not is_booked %}onclick="selectSeat({{ seat_num }})"{% endif %} data-seat="{{ seat_num }}" title="Berth {{ seat_num }}">
+                                        <div class="berth-pillow"></div>
+                                        <div class="berth-body"><span>₹{{ schedule.fare }}</span></div>
+                                    </div>
+                                    
+                                    {% if loop.index0 % 3 == 1 %}
+                                        <div class="sleeper-aisle"></div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Lower Deck -->
+                        <div class="deck-wrapper">
+                            <div class="steering-wheel sleeper-steer">
+                                <svg viewBox="0 0 24 24" fill="none" class="steer-icon"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="2"></circle><line x1="12" y1="2" x2="12" y2="10"></line><line x1="12" y1="14" x2="12" y2="22"></line><line x1="2" y1="12" x2="10" y2="12"></line><line x1="14" y1="12" x2="22" y2="12"></line></svg>
+                            </div>
+                            <div class="deck-label lower-label"><span>Lower</span></div>
+                            <div class="sleeper-grid">
+                                {% set lower_seats = [] %}
+                                {% for seat_num in range(2, bus.total_seats + 1, 2) %}
+                                    {% set _ = lower_seats.append(seat_num) %}
+                                {% endfor %}
+                                
+                                {% for seat_num in lower_seats %}
+                                    {% set s_class = 'available clickable' %}
+                                    {% set gender_class = '' %}
+                                    {% set is_booked = False %}
+                                    {% if seat_num|string in booked_seats %}
+                                        {% set s_class = 'booked' %}
+                                        {% set is_booked = True %}
+                                    {% endif %}
+
+                                    <div class="berth-item sleeper {{ s_class }} {{ gender_class }}" {% if not is_booked %}onclick="selectSeat({{ seat_num }})"{% endif %} data-seat="{{ seat_num }}" title="Berth {{ seat_num }}">
+                                        <div class="berth-pillow"></div>
+                                        <div class="berth-body"><span>₹{{ schedule.fare }}</span></div>
+                                    </div>
+                                    
+                                    {% if loop.index0 % 3 == 1 %}
+                                        <div class="sleeper-aisle"></div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <h3>Select Your Seat</h3>
+                    <div class="bus-layout-wrapper">
+                        <div class="steering-wheel">
+                            <svg viewBox="0 0 24 24" fill="none" class="steer-icon"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="2"></circle><line x1="12" y1="2" x2="12" y2="10"></line><line x1="12" y1="14" x2="12" y2="22"></line><line x1="2" y1="12" x2="10" y2="12"></line><line x1="14" y1="12" x2="22" y2="12"></line></svg>
+                        </div>
+                        <div class="bus-seats-container">
+                            {% for seat_num in range(1, bus.total_seats + 1) %}
+                                {% set s_class = 'available clickable' %}
+                                {% set gender_class = '' %}
+                                {% set is_booked = False %}
+                                {% if seat_num|string in booked_seats %}
+                                    {% set s_class = 'booked' %}
+                                    {% set is_booked = True %}
+                                    {% if seat_num % 6 == 0 %}{% set gender_class = 'female-booked' %}{% endif %}
+                                {% else %}
+                                    {% if seat_num % 5 == 0 %}{% set gender_class = 'female-only' %}{% endif %}
+                                    {% if seat_num % 7 == 0 %}{% set gender_class = 'male-only' %}{% endif %}
+                                {% endif %}
+
+                                <div class="seat-item seat {{ s_class }} {{ gender_class }}" {% if not is_booked %}onclick="selectSeat({{ seat_num }})"{% endif %} data-seat="{{ seat_num }}" title="Seat {{ seat_num }}">
+                                    <div class="cushion"></div>
+                                    <div class="details"><span>₹{{ schedule.fare }}</span></div>
+                                </div>
+                                
+                                {% if seat_num <= bus.total_seats - 5 and seat_num % 4 == 2 %}
+                                     <div class="aisle-space"></div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="new-seat-legend">
+                    <div class="legend-item"><div class="seat-item seat available"><div class="cushion"></div><div class="details"></div></div><span>Available</span></div>
+                    <div class="legend-item"><div class="seat-item seat female-only"><div class="cushion"></div><div class="details"></div></div><span>For Female</span></div>
+                    <div class="legend-item"><div class="seat-item seat male-only"><div class="cushion"></div><div class="details"></div></div><span>For Male</span></div>
+                    <div class="legend-item"><div class="seat-item seat female-booked"><div class="cushion"></div><div class="details"></div></div><span>Female booked</span></div>
+                    <div class="legend-item"><div class="seat-item seat booked"><div class="cushion"></div><div class="details"></div></div><span>Booked</span></div>
+                </div>
+            </div>
+
+            <form method="POST" class="booking-form">
+                <div class="form-section journey-points">
+                    <div class="journey-tabs">
+                        <button type="button" class="tab-btn active" onclick="switchTab('boarding')">✓ Boarding Points</button>
+                        <button type="button" class="tab-btn" onclick="switchTab('dropping')">✓ Dropping Points</button>
+                    </div>
+                    
+                    <div id="boarding-tab" class="tab-content active">
+                        <div class="station-search">
+                            <input type="text" placeholder="Search Boarding Point" class="search-input" onkeyup="filterStations('boarding')">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="stations-list">
+                            <label class="station-option">
+                                <input type="radio" name="boarding_station" value="{{ route.source }} - Central Station" required>
+                                <div class="station-info">
+                                    <strong>{{ route.source }} - Central Station</strong>
+                                    <small>City Center Location</small>
+                                </div>
+                            </label>
+                            <label class="station-option">
+                                <input type="radio" name="boarding_station" value="{{ route.source }} - Bus Stand">
+                                <div class="station-info">
+                                    <strong>{{ route.source }} - Bus Stand</strong>
+                                    <small>Main Bus Terminal</small>
+                                </div>
+                            </label>
+                            <label class="station-option">
+                                <input type="radio" name="boarding_station" value="{{ route.source }} - Airport">
+                                <div class="station-info">
+                                    <strong>{{ route.source }} - Airport</strong>
+                                    <small>Airport Terminal</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="dropping-tab" class="tab-content">
+                        <div class="station-search">
+                            <input type="text" placeholder="Search Dropping Point" class="search-input" onkeyup="filterStations('dropping')">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="stations-list">
+                            <label class="station-option">
+                                <input type="radio" name="dropping_station" value="{{ route.destination }} - Central Station" required>
+                                <div class="station-info">
+                                    <strong>{{ route.destination }} - Central Station</strong>
+                                    <small>City Center Location</small>
+                                </div>
+                            </label>
+                            <label class="station-option">
+                                <input type="radio" name="dropping_station" value="{{ route.destination }} - Bus Stand">
+                                <div class="station-info">
+                                    <strong>{{ route.destination }} - Bus Stand</strong>
+                                    <small>Main Bus Terminal</small>
+                                </div>
+                            </label>
+                            <label class="station-option">
+                                <input type="radio" name="dropping_station" value="{{ route.destination }} - Airport">
+                                <div class="station-info">
+                                    <strong>{{ route.destination }} - Airport</strong>
+                                    <small>Airport Terminal</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>👤 Passenger Details</h4>
+                    <div id="passengers-container">
+                        <div class="passenger-form" id="default-empty-form">
+                            <div class="form-group">
+                                <label>Passenger Name:</label>
+                                <input type="text" placeholder="Waiting for seat selection..." disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number:</label>
+                                <input type="tel" placeholder="Waiting for seat selection..." disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Selected Seat:</label>
+                                <input type="text" class="selected_seat" placeholder="Please select a seat" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section price-summary">
+                    <h4>💰 Price Summary</h4>
+                    <p>Fare per seat: ₹{{ schedule.fare }}</p>
+                    <p>Number of passengers: <span id="passenger-count">1</span></p>
+                    <p style="font-weight: 700; font-size: 18px; color: var(--accent-3);">Total: ₹<span id="total-price">{{ schedule.fare }}</span></p>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary btn-block">Continue to Payment</button>
+                    <a href="/search" class="btn btn-secondary btn-block" style="text-align: center;">Back to Search</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Bus Booking App. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const fareAmount = {{ schedule.fare }};
+        let selectedSeats = [];
+
+        function selectSeat(seatNum) {
+            const selectedElement = event.currentTarget;
+            
+            if (selectedElement.classList.contains('selected')) {
+                selectedElement.classList.remove('selected');
+                selectedSeats = selectedSeats.filter(s => s !== seatNum);
+                removePassengerForm(seatNum);
+            } else {
+                selectedElement.classList.add('selected');
+                if (!selectedSeats.includes(seatNum)) {
+                    selectedSeats.push(seatNum);
+                    addPassengerForm(seatNum);
+                }
+            }
+            updatePrice();
+        }
+
+        function addPassengerForm(seatNum) {
+            const container = document.getElementById('passengers-container');
+            const emptyForm = document.getElementById('default-empty-form');
+            if (emptyForm) {
+                emptyForm.style.display = 'none';
+            }
+
+            const passengerForm = document.createElement('div');
+            passengerForm.className = 'passenger-form';
+            passengerForm.id = 'passenger-form-' + seatNum;
+            passengerForm.innerHTML = `
+                <div class="form-group">
+                    <label>Passenger Name:</label>
+                    <input type="text" name="passenger_name" placeholder="Enter full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number:</label>
+                    <input type="tel" name="passenger_phone" placeholder="Enter phone number" required>
+                </div>
+                <div class="form-group">
+                    <label>Selected Seat:</label>
+                    <input type="number" name="seat_number" class="selected_seat" value="${seatNum}" readonly required>
+                </div>
+            `;
+            container.appendChild(passengerForm);
+        }
+
+        function removePassengerForm(seatNum) {
+            const form = document.getElementById('passenger-form-' + seatNum);
+            if (form) form.remove();
+            
+            if (selectedSeats.length === 0) {
+                const emptyForm = document.getElementById('default-empty-form');
+                if (emptyForm) {
+                    emptyForm.style.display = 'grid';
+                }
+            }
+        }
+
+        function updatePrice() {
+            const passengerCount = selectedSeats.length;
+            const totalPrice = fareAmount * passengerCount;
+            document.getElementById('passenger-count').textContent = passengerCount;
+            document.getElementById('total-price').textContent = totalPrice;
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.getElementById('boarding-tab').classList.remove('active');
+            document.getElementById('dropping-tab').classList.remove('active');
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab and mark button as active
+            if (tabName === 'boarding') {
+                document.getElementById('boarding-tab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else {
+                document.getElementById('dropping-tab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            }
+        }
+
+        function filterStations(tabName) {
+            const searchInput = event.target.value.toLowerCase();
+            const stationOptions = document.querySelectorAll(`#${tabName}-tab .station-option`);
+            
+            stationOptions.forEach(option => {
+                const stationName = option.querySelector('.station-info strong').textContent.toLowerCase();
+                if (stationName.includes(searchInput)) {
+                    option.style.display = 'flex';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePrice();
+        });
+    </script>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

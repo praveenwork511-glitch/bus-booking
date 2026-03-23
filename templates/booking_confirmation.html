@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - Bus Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🚌 Bus Booking System</h1>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="success-section">
+            <div class="success-card">
+                <div class="success-icon">✓</div>
+                <h2>Booking Confirmed!</h2>
+                <p>Your seat has been successfully booked.</p>
+                
+                <div class="confirmation-details">
+                    <div class="detail-row">
+                        <span>Booking ID:</span>
+                        <strong>BUS{{ booking.id | string | center(8, '0') }}</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Passenger Name:</span>
+                        <strong>{{ booking.passenger_name }}</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Seat Number:</span>
+                        <strong>{{ booking.seat_number }}</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Amount Paid:</span>
+                        <strong>₹{{ booking.total_fare }}</strong>
+                    </div>
+                </div>
+
+                <div class="confirmation-message">
+                    <p>A confirmation SMS has been sent to {{ booking.passenger_phone }}</p>
+                </div>
+
+                <div class="buttons">
+                    <a href="/download-ticket/{{ booking.id }}" class="btn btn-primary">📥 Download Ticket (PDF)</a>
+                    <a href="/customer-dashboard" class="btn btn-secondary">View My Bookings</a>
+                    <a href="/search" class="btn btn-tertiary">Book Another Ticket</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Bus Booking App. All rights reserved.</p>
+    </footer>
+</body>
+</html>

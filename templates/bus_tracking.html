@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Live Tracking - BusBook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+    <div class="main-box">
+    <nav class="navbar custom-nav">
+        <div class="container">
+            <h1>🚌 BusBook Tracking</h1>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/search">Search Bus</a>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.user_type == 'admin' %}
+                        <a href="/admin-dashboard">Admin</a>
+                        <a href="/admin/buses">Bus List</a>
+                    {% elif current_user.user_type == 'customer' %}
+                        <a href="/customer-dashboard">My Bookings</a>
+                    {% endif %}
+                    <div class="profile-icon">{{ current_user.first_name[0].upper() }}</div>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="tracking-container">
+            <div class="tracking-search">
+                <h2>🗺️ Bus Live Tracking System</h2>
+                <p>Enter bus number to track its real-time location</p>
+                
+                <form method="POST" class="search-tracking-form">
+                    <div class="form-group">
+                        <label for="bus_number">🚌 Enter Bus Number</label>
+                        <input type="text" name="bus_number" id="bus_number" placeholder="e.g., KA-A01" 
+                               required style="text-transform: uppercase;">
+                        <small>Format: KA-A01 (State-Letter Number)</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        🔍 Search & Track
+                    </button>
+                </form>
+
+                {% if bus_info %}
+                <div class="bus-info-card">
+                    <h3>📊 Bus Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <strong>Bus Number:</strong>
+                            <span>{{ bus_info.number }}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Bus Name:</strong>
+                            <span>{{ bus_info.name }}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Bus Type:</strong>
+                            <span class="badge">{{ bus_info.type }}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Operator:</strong>
+                            <span>{{ bus_info.owner }} Travels</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Seats:</strong>
+                            <span>{{ bus_info.total_seats }}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Amenities:</strong>
+                            <span>{{ bus_info.amenities }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if schedules %}
+                <div class="schedule-list">
+                    <h3>📅 Today's Schedules</h3>
+                    {% for schedule, route in schedules %}
+                    <div class="schedule-card">
+                        <div class="route-info">
+                            <strong>{{ route.source }} → {{ route.destination }}</strong>
+                        </div>
+                        <div class="schedule-details">
+                            <span>⏰ Depart: {{ schedule.departure_time }}</span>
+                            <span>⏱️ Arrive: {{ schedule.arrival_time }}</span>
+                            <span>💰 Fare: ₹{{ schedule.fare }}</span>
+                            <span>💺 Available: {{ schedule.available_seats }}</span>
+                        </div>
+                        <button class="btn btn-small btn-secondary" onclick="trackBus({{ bus_info.id }})">
+                            🗺️ View on Map
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    ℹ️ No schedules found for this bus today.
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            {% if bus_info %}
+            <div class="map-container">
+                <div id="map" class="bus-map"></div>
+                <div class="map-info">
+                    <h4>📍 Real-Time Location</h4>
+                    <div id="location-info">Loading location...</div>
+                    <button class="btn btn-primary" onclick="startTracking()" style="width: 100%; margin-top: 10px;">
+                        ▶️ Start Live Update
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 BusBook - Real-Time Bus Tracking System</p>
+    </footer>
+
+    <script>
+        let map = null;
+        let busMarker = null;
+        let trackingInterval = null;
+
+        function initMap() {
+            if (map) return;
+            
+            map = L.map('map').setView([12.9716, 77.5946], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19,
+                className: 'map-tiles'
+            }).addTo(map);
+        }
+
+        function trackBus(busId) {
+            if (!map) initMap();
+            
+            fetch(`/api/bus-location/${busId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (busMarker) map.removeLayer(busMarker);
+                    
+                    busMarker = L.circleMarker([data.lat, data.lng], {
+                        radius: 12,
+                        fillColor: '#ff006e',
+                        color: '#fff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map)
+                    .bindPopup(`<strong>${data.bus_number}</strong><br>Speed: ${data.speed} km/h<br>Status: ${data.status}`);
+                    
+                    map.setView([data.lat, data.lng], 13);
+                    
+                    document.getElementById('location-info').innerHTML = `
+                        <div style="padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+                            <p><strong>Bus:</strong> ${data.bus_number}</p>
+                            <p><strong>Location:</strong> ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}</p>
+                            <p><strong>Speed:</strong> ${data.speed} km/h</p>
+                            <p><strong>Status:</strong> 🟢 ${data.status}</p>
+                            <p style="font-size: 12px; color: #888;">Updated: ${new Date(data.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function startTracking() {
+            const busNumber = document.getElementById('bus_number').value;
+            if (!busNumber) {
+                alert('Please enter a bus number');
+                return;
+            }
+
+            // Extract bus ID from the current page
+            const busId = {{ bus_info.id if bus_info else 'null' }};
+            if (!busId) return;
+
+            if (trackingInterval) clearInterval(trackingInterval);
+            
+            trackBus(busId);
+            trackingInterval = setInterval(() => trackBus(busId), 5000); // Update every 5 seconds
+            
+            alert('🟢 Live tracking started! Updates every 5 seconds.');
+        }
+
+        // Auto-initialize map when bus info is present
+        {% if bus_info %}
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                initMap();
+                trackBus({{ bus_info.id }});
+            }, 100);
+        });
+        {% endif %}
+    </script>
+
+    <style>
+        .tracking-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .tracking-search {
+            background: rgba(30, 21, 48, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .tracking-search h2 {
+            color: var(--accent-2);
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .tracking-search p {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+        }
+
+        .search-tracking-form {
+            margin-bottom: 25px;
+        }
+
+        .search-tracking-form .form-group {
+            margin-bottom: 15px;
+        }
+
+        .search-tracking-form small {
+            display: block;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .bus-info-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(255, 0, 110, 0.1) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .bus-info-card h3 {
+            color: var(--accent-1);
+            margin-bottom: 15px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-item strong {
+            color: var(--accent-1);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .info-item span {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .schedule-list {
+            margin-top: 25px;
+        }
+
+        .schedule-list h3 {
+            color: var(--accent-3);
+            margin-bottom: 15px;
+        }
+
+        .schedule-card {
+            background: rgba(30, 30, 60, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .route-info {
+            color: var(--accent-1);
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .schedule-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .map-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bus-map {
+            height: 500px;
+            border-radius: 16px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+
+        .map-info {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(255, 0, 110, 0.1) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .map-info h4 {
+            color: var(--accent-1);
+            margin-bottom: 15px;
+        }
+
+        #location-info {
+            min-height: 100px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media (max-width: 1024px) {
+            .tracking-container {
+                grid-template-columns: 1fr;
+            }
+
+            .bus-map {
+                height: 400px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tracking-search {
+                padding: 20px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bus-map {
+                height: 300px;
+            }
+
+            .schedule-details {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Leaflet map custom styling */
+        .map-tiles {
+            filter: invert(1) hue-rotate(200deg) brightness(0.95);
+        }
+    </style>
+
+</div>
+    <!-- Vanta 3D Background -->
+<div id="vanta-bg" style="position: fixed; z-index: -1; top: 0; left: 0; width: 100%; height: 100%;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00d4ff,
+      backgroundColor: 0x080b1f,
+      points: 15.00,
+      maxDistance: 22.00,
+      spacing: 16.00,
+      showDots: true
+    })
+</script>
+</body>
+
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvetbus - Premium Bus Booking</title>
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/home_style.css">
+</head>
+
+<body class="home-body">
+    <div class="bg-overlay"></div>
+
+    <div class="main-box">
+        <nav class="navbar custom-nav">
+            <div class="container nav-container">
+                <h1 class="logo">🚌 VelvetBus</h1>
+                <div class="nav-links">
+                    <a href="/">Home</a>
+                    <a href="/search">Search Bus</a>
+                    <a href="/bus-tracking">Track Bus</a>
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.user_type == 'admin' %}
+                    <a href="/admin-dashboard">Admin</a>
+                    {% elif current_user.user_type == 'owner' %}
+                    <a href="/owner-dashboard">My Dashboard</a>
+                    {% elif current_user.user_type == 'customer' %}
+                    <a href="/customer-dashboard">My Bookings</a>
+                    {% endif %}
+                    <div class="profile-icon">{{ current_user.first_name[0].upper() }}</div>
+                    <a href="/logout">Logout</a>
+                    {% else %}
+                    <a href="/login" class="nav-btn-login">Login</a>
+                    <a href="/register" class="nav-btn-register">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+
+        <div class="container main-content">
+            <!-- OWNER DASHBOARD SECTION - Only visible for owners -->
+            {% if current_user.is_authenticated and current_user.user_type == 'owner' %}
+            <div style="margin-bottom: 40px; border-top: 2px solid #00f0ff; padding-top: 30px;">
+                <h2 style="color: #00f0ff; margin-bottom: 30px;">🚌 My Buses & Schedules</h2>
+                
+                <!-- Your Buses Section -->
+                <div style="background: linear-gradient(135deg, #1a1f3f 0%, #0d1a2f 100%); border: 1px solid #00f0ff; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                    <h3 style="color: #00f0ff; margin-bottom: 20px;">Your Buses</h3>
+                    {% if buses %}
+                        <table style="width: 100%; border-collapse: collapse; color: #ccc;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #00f0ff;">
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Photo</th>
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Bus Number</th>
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Bus Name</th>
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Type</th>
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Total Seats</th>
+                                    <th style="padding: 12px; text-align: left; color: #00f0ff;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bus in buses %}
+                                <tr style="border-bottom: 1px solid #333;">
+                                    <td style="padding: 12px;">
+                                        {% if bus.photo_filename %}
+                                            <img src="/static/bus_photos/{{ bus.photo_filename }}" alt="{{ bus.bus_name }}" style="max-height: 50px; max-width: 100px; border-radius: 4px;">
+                                        {% else %}
+                                            <span style="color: #999;">No photo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px;">{{ bus.bus_number }}</td>
+                                    <td style="padding: 12px;">{{ bus.bus_name }}</td>
+                                    <td style="padding: 12px;"><span style="background: #00f0ff; color: #080b1f; padding: 4px 8px; border-radius: 4px; font-size: 0.9em;">{{ bus.bus_type.name }}</span></td>
+                                    <td style="padding: 12px;">{{ bus.total_seats }}</td>
+                                    <td style="padding: 12px;">
+                                        <button class="btn btn-small" onclick="openPhotoModal({{ bus.id }})" style="background: #00f0ff; color: #080b1f; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">📷 Photo</button>
+                                        <button class="btn btn-small" onclick="openScheduleModal({{ bus.id }})" style="background: #00f0ff; color: #080b1f; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer;">📅 Schedule</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p style="color: #999;">You haven't added any buses yet. Add one below!</p>
+                    {% endif %}
+                </div>
+
+                <!-- Add New Bus Section -->
+                <div style="background: linear-gradient(135deg, #1a1f3f 0%, #0d1a2f 100%); border: 1px solid #00f0ff; border-radius: 12px; padding: 25px;">
+                    <h3 style="color: #00f0ff; margin-bottom: 20px;">Add New Bus</h3>
+                    <form id="addBusForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div>
+                            <label style="color: #00f0ff; display: block; margin-bottom: 5px;">Bus Number:</label>
+                            <input type="text" id="busNumber" placeholder="e.g., KA-01AB1234" required style="width: 100%; padding: 10px; background: #0d1a2f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="color: #00f0ff; display: block; margin-bottom: 5px;">Bus Name:</label>
+                            <input type="text" id="busName" placeholder="e.g., Express Bus 1" required style="width: 100%; padding: 10px; background: #0d1a2f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="color: #00f0ff; display: block; margin-bottom: 5px;">Bus Type:</label>
+                            <select id="busType" required style="width: 100%; padding: 10px; background: #0d1a2f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                                <option value="1">Non-AC</option>
+                                <option value="2">AC Seater</option>
+                                <option value="3">AC Sleeper</option>
+                                <option value="4">Recliner</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="color: #00f0ff; display: block; margin-bottom: 5px;">Total Seats:</label>
+                            <input type="number" id="totalSeats" placeholder="50" required style="width: 100%; padding: 10px; background: #0d1a2f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                        </div>
+                        <div style="grid-column: 1/-1;">
+                            <button type="button" onclick="submitAddBusForm()" style="background: linear-gradient(90deg, #00f0ff 0%, #00d4ff 100%); color: #080b1f; padding: 12px 30px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; width: 100%;">Add Bus</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Photo Upload Modal -->
+                <div id="photoModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); overflow-y: auto;">
+                    <div style="background-color: #080b1f; margin: 10% auto; padding: 30px; border: 2px solid #00f0ff; width: 450px; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);">
+                        <span onclick="closePhotoModal()" style="color: #00f0ff; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+                        <h2 style="color: #00f0ff; margin-top: 0;">Upload Bus Photo</h2>
+                        <form id="photoForm">
+                            <div style="margin-bottom: 20px;">
+                                <label style="color: #fff; display: block; margin-bottom: 10px;">Select Photo:</label>
+                                <input type="file" id="photoInput" name="photo" accept="image/*" required style="color: #fff; padding: 8px; background: #1a1f3f; border: 1px solid #00f0ff; border-radius: 4px; width: 100%; box-sizing: border-box;">
+                            </div>
+                            <button type="button" onclick="uploadPhoto()" style="background: #00f0ff; color: #080b1f; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; width: 100%;">Upload Photo</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Schedule Management Modal -->
+                <div id="scheduleModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); overflow-y: auto;">
+                    <div style="background-color: #080b1f; margin: 3% auto; padding: 30px; border: 2px solid #00f0ff; width: 600px; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);">
+                        <span onclick="closeScheduleModal()" style="color: #00f0ff; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+                        <h2 style="color: #00f0ff; margin-top: 0;">Manage Schedule</h2>
+                        
+                        <form id="scheduleForm">
+                            <div style="margin-bottom: 15px;">
+                                <label style="color: #fff; display: block; margin-bottom: 5px;">Route:</label>
+                                <select id="routeSelect" required style="width: 100%; padding: 10px; background: #1a1f3f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                                    <option value="">🔄 Loading routes...</option>
+                                    {% if routes %}
+                                        {% for route in routes %}
+                                            <option value="{{ route.id }}">{{ route.source }} → {{ route.destination }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="">⚠️ No routes available. Contact admin to add routes.</option>
+                                    {% endif %}
+                                </select>
+                                {% if not routes %}
+                                    <p style="color: #ff9999; font-size: 0.9em; margin-top: 5px;">💡 Tip: Admin needs to add routes first. Once routes are added, you can create schedules.</p>
+                                {% endif %}
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="color: #fff; display: block; margin-bottom: 5px;">Departure Time:</label>
+                                    <input type="time" id="departureTime" required style="width: 100%; padding: 10px; background: #1a1f3f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="color: #fff; display: block; margin-bottom: 5px;">Arrival Time:</label>
+                                    <input type="time" id="arrivalTime" style="width: 100%; padding: 10px; background: #1a1f3f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <label style="color: #fff; display: block; margin-bottom: 5px;">Fare (₹):</label>
+                                <input type="number" id="fare" step="0.01" required style="width: 100%; padding: 10px; background: #1a1f3f; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 4px;">
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <label style="color: #fff; display: block; margin-bottom: 10px;">Days of Week (select multiple):</label>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Mon" class="day-checkbox"> Monday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Tue" class="day-checkbox"> Tuesday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Wed" class="day-checkbox"> Wednesday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Thu" class="day-checkbox"> Thursday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Fri" class="day-checkbox"> Friday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Sat" class="day-checkbox"> Saturday
+                                    </label>
+                                    <label style="color: #fff;">
+                                        <input type="checkbox" name="days" value="Sun" class="day-checkbox"> Sunday
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="addSchedule()" style="background: #00f0ff; color: #080b1f; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; width: 100%; margin-bottom: 20px;">Add Schedule</button>
+                        </form>
+
+                        <div id="schedulesList" style="border-top: 2px solid #00f0ff; padding-top: 20px;">
+                            <h3 style="color: #00f0ff;">Current Schedules</h3>
+                            <p style="color: #ccc;" id="noSchedules">Loading schedules...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Main Bento Grid (for all users) -->
+            <div class="bento-grid">
+
+                <!-- Hero Tile (Large) -->
+                <div class="bento-tile tile-hero">
+                    <h2>Journey Beyond Expectations.</h2>
+                    <p>VelvetBus redefines the way you travel. Experience luxury, punctuality, and safety wrapped in a
+                        seamless booking platform. Your premier destination for intercity coach connections.</p>
+                    <div class="hero-actions">
+                        <a href="/buses-today" class="btn-glow pulse-anim">Book Today's Bus ➔</a>
+                        <a href="/search" class="btn-outline">Advanced Search</a>
+                    </div>
+                </div>
+
+                <!-- About Company Tile -->
+                <div class="bento-tile tile-about">
+                    <div class="tile-icon">🏛️</div>
+                    <h3>Our Vision</h3>
+                    <p>Founded with the mission to provide a hyper-premium road travel experience, VelvetRails merges
+                        technology with world-class hospitality.</p>
+                </div>
+
+                <!-- Stats/Trust Tile -->
+                <div class="bento-tile tile-stats">
+                    <div class="stat-box">
+                        <h4>1M+</h4>
+                        <span>Happy Travelers</span>
+                    </div>
+                    <div class="stat-box">
+                        <h4>500+</h4>
+                        <span>Luxury Coaches</span>
+                    </div>
+                </div>
+
+                <!-- Feature 1 -->
+                <div class="bento-tile tile-feature">
+                    <div class="feature-icon">⚡</div>
+                    <h4>Lightning Fast</h4>
+                    <p>Book seats in under 30 seconds with our next-gen engine.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bento-tile tile-feature col-span-2">
+                    <div class="feature-icon">🛡️</div>
+                    <h4>Bank-Grade Security & Privacy</h4>
+                    <p>Your data and payment info are protected by military-grade AES-256 encryption. We prioritize your
+                        privacy above all else.</p>
+                </div>
+
+            </div>
+        </div>
+
+        <footer class="home-footer">
+            <p>&copy; 2026 VelvetRails Premium Transport. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+    let currentBusId = null;
+
+    // Check if routes exist, if not offer to create them
+    document.addEventListener('DOMContentLoaded', function() {
+        const routeSelect = document.getElementById('routeSelect');
+        if (routeSelect && routeSelect.options.length <= 1) {
+            console.log('No routes found. Attempting to initialize...');
+            initializeRoutes();
+        }
+    });
+
+    function initializeRoutes() {
+        fetch('/api/init-routes', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                console.log(data.message);
+                // Reload page to show the new routes
+                setTimeout(() => location.reload(), 1000);
+            }
+        })
+        .catch(e => console.error('Failed to initialize routes:', e));
+    }
+
+    function submitAddBusForm() {
+        const busNumber = document.getElementById('busNumber').value;
+        const busName = document.getElementById('busName').value;
+        const busType = document.getElementById('busType').value;
+        const totalSeats = document.getElementById('totalSeats').value;
+        
+        if (!busNumber || !busName || !busType || !totalSeats) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        fetch('/api/add-bus', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bus_number: busNumber,
+                bus_name: busName,
+                bus_type_id: busType,
+                total_seats: parseInt(totalSeats)
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                document.getElementById('addBusForm').reset();
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(e => alert('Failed to add bus: ' + e));
+    }
+
+    function openPhotoModal(busId) {
+        currentBusId = busId;
+        document.getElementById('photoModal').style.display = 'block';
+    }
+
+    function closePhotoModal() {
+        document.getElementById('photoModal').style.display = 'none';
+        document.getElementById('photoForm').reset();
+    }
+
+    function uploadPhoto() {
+        const fileInput = document.getElementById('photoInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a photo');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        fetch(`/api/upload-bus-photo/${currentBusId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Photo uploaded successfully!');
+                closePhotoModal();
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(e => alert('Upload failed: ' + e));
+    }
+
+    function openScheduleModal(busId) {
+        currentBusId = busId;
+        document.getElementById('scheduleModal').style.display = 'block';
+        loadSchedules(busId);
+    }
+
+    function closeScheduleModal() {
+        document.getElementById('scheduleModal').style.display = 'none';
+        document.getElementById('scheduleForm').reset();
+    }
+
+    function addSchedule() {
+        const routeId = document.getElementById('routeSelect').value;
+        const departureTime = document.getElementById('departureTime').value;
+        const arrivalTime = document.getElementById('arrivalTime').value;
+        const fare = document.getElementById('fare').value;
+        
+        const dayCheckboxes = document.querySelectorAll('input[name="days"]:checked');
+        const daysArray = Array.from(dayCheckboxes).map(cb => cb.value);
+        
+        if (!routeId || !departureTime || !fare) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        if (daysArray.length === 0) {
+            alert('Please select at least one day');
+            return;
+        }
+        
+        fetch('/api/add-schedule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bus_id: currentBusId,
+                route_id: routeId,
+                departure_time: departureTime,
+                arrival_time: arrivalTime,
+                fare: fare,
+                days_of_week: daysArray.join(',')
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Schedule added successfully!');
+                document.getElementById('scheduleForm').reset();
+                loadSchedules(currentBusId);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(e => alert('Failed: ' + e));
+    }
+
+    function loadSchedules(busId) {
+        fetch(`/api/bus-schedules/${busId}`)
+        .then(r => r.json())
+        .then(schedules => {
+            const schedulesList = document.getElementById('schedulesList');
+            const noSchedules = document.getElementById('noSchedules');
+            
+            if (!schedules || schedules.length === 0) {
+                noSchedules.innerHTML = '<p style="color: #ccc;">No schedules added yet. Create one above!</p>';
+                return;
+            }
+            
+            noSchedules.innerHTML = '';
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="border-bottom: 2px solid #00f0ff;"><th style="padding: 10px; text-align: left; color: #00f0ff;">Route</th><th style="padding: 10px; text-align: left; color: #00f0ff;">Time</th><th style="padding: 10px; text-align: left; color: #00f0ff;">Fare</th><th style="padding: 10px; text-align: left; color: #00f0ff;">Days</th><th style="padding: 10px; text-align: left; color: #00f0ff;">Seats</th><th style="padding: 10px; text-align: left; color: #00f0ff;">Action</th></tr></thead><tbody>';
+            
+            schedules.forEach(schedule => {
+                html += `<tr style="border-bottom: 1px solid #333; color: #ccc;">
+                    <td style="padding: 10px;">${schedule.route_name}</td>
+                    <td style="padding: 10px;">${schedule.departure_time} - ${schedule.arrival_time}</td>
+                    <td style="padding: 10px;">₹${schedule.fare}</td>
+                    <td style="padding: 10px;">${schedule.days_of_week || 'N/A'}</td>
+                    <td style="padding: 10px;">${schedule.available_seats}</td>
+                    <td style="padding: 10px;">
+                        <button style="background: #ff4444; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;" onclick="deleteSchedule(${schedule.id})">Delete</button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            schedulesList.innerHTML = '<h3 style="color: #00f0ff;">Current Schedules</h3>' + html;
+        })
+        .catch(e => {
+            console.error('Error loading schedules:', e);
+            document.getElementById('schedulesList').innerHTML = '<p style="color: red;">Error loading schedules</p>';
+        });
+    }
+
+    function deleteSchedule(scheduleId) {
+        if (!confirm('Are you sure you want to delete this schedule?')) {
+            return;
+        }
+        
+        fetch(`/api/delete-schedule/${scheduleId}`, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Schedule deleted successfully!');
+                loadSchedules(currentBusId);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(e => alert('Failed to delete: ' + e));
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const photoModal = document.getElementById('photoModal');
+        const scheduleModal = document.getElementById('scheduleModal');
+        if (event.target === photoModal) {
+            photoModal.style.display = 'none';
+        }
+        if (event.target === scheduleModal) {
+            scheduleModal.style.display = 'none';
+        }
+    }
+    </script>
