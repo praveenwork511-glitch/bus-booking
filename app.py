@@ -25,7 +25,9 @@ try:
 except ImportError:
     pass  # ReportLab optional for PDF generation
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            static_folder='backend/static', 
+            template_folder='backend/templates')
 # Use PostgreSQL from .env if available, else SQLite for development
 database_url = os.getenv('DATABASE_URL')
 if database_url:
@@ -842,4 +844,4 @@ if __name__ == '__main__':
 
     with app.app_context():
         db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
