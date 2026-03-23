@@ -8,6 +8,7 @@ from io import BytesIO
 from dotenv import load_dotenv
 import stripe
 from backend.s3_helpers import register_s3_context
+from whitenoise import WhiteNoise
 
 # Load environment variables
 load_dotenv()
@@ -29,6 +30,9 @@ app = Flask(__name__,
             static_folder='static', 
             static_url_path='/static',
             template_folder='templates')
+
+# Add WhiteNoise for serving static files in production
+app.wsgi_app = WhiteNoise(app.wsgi_app, root=os.path.join(os.path.dirname(__file__), 'static'))
 
 # Use PostgreSQL from .env if available, else SQLite for development
 database_url = os.getenv('DATABASE_URL')
@@ -178,7 +182,10 @@ def send_sms(phone_number, message):
 # ROUTES
 @app.route("/")
 def home():
-    return render_template("index.html")
+    buses = []
+    if current_user.is_authenticated and current_user.user_type == 'owner':
+        buses = Bus.query.filter_by(owner_id=current_user.id).all()
+    return render_template("index.html", buses=buses)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
