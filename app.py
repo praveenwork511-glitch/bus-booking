@@ -264,6 +264,16 @@ def search():
 
     return render_template('search.html', routes=routes, schedules=schedules)
 
+@app.route('/buses-today')
+def buses_today():
+    today = datetime.now().date()
+    schedules = db.session.query(Schedule, Bus, Route, BusType).join(Bus, Schedule.bus_id == Bus.id)\
+        .join(Route, Schedule.route_id == Route.id)\
+        .join(BusType, Bus.bus_type_id == BusType.id)\
+        .filter(Schedule.journey_date == today).all()
+    
+    return render_template('buses_today.html', schedules=schedules)
+
 @app.route('/book/<int:schedule_id>', methods=['GET', 'POST'])
 @login_required
 def book(schedule_id):
