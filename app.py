@@ -174,43 +174,9 @@ def send_sms(phone_number, message):
         return False
 
 # ROUTES
-@app.route('/')
+@app.route("/")
 def home():
-    if current_user.is_authenticated:
-        if current_user.user_type == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        elif current_user.user_type == 'owner':
-            return redirect(url_for('owner_dashboard'))
-        else:
-            return redirect(url_for('customer_dashboard'))
-    
-    # Fetch today's routes with bus count
-    today = datetime.now().date()
-    routes_today = []
-    routes = Route.query.all()
-    
-    for route in routes:
-        schedule_count = Schedule.query.filter(
-            Schedule.route_id == route.id, 
-            Schedule.journey_date == today
-        ).count()
-        
-        if schedule_count > 0:
-            bus_count = Bus.query.join(Schedule).filter(
-                Schedule.route_id == route.id,
-                Schedule.journey_date == today
-            ).distinct(Bus.id).count()
-            
-            routes_today.append({
-                'id': route.id,
-                'source': route.source,
-                'destination': route.destination,
-                'distance': route.distance,
-                'bus_count': bus_count,
-                'schedule_count': schedule_count
-            })
-    
-    return render_template('index.html', routes_today=routes_today)
+    return render_template("index.html")
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
