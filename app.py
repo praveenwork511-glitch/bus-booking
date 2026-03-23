@@ -30,6 +30,11 @@ app = Flask(__name__,
             static_url_path='/static',
             template_folder='templates')
 
+# Ensure Jinja2 auto-reloading for development
+app.jinja_env.auto_reload = True
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
 # Use PostgreSQL from .env if available, else SQLite for development
 database_url = os.getenv('DATABASE_URL')
 if database_url:
