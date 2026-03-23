@@ -267,13 +267,22 @@ def search():
 
 @app.route('/buses-today')
 def buses_today():
-    today = datetime.now().date()
-    schedules = db.session.query(Schedule, Bus, Route, BusType).join(Bus, Schedule.bus_id == Bus.id)\
-        .join(Route, Schedule.route_id == Route.id)\
-        .join(BusType, Bus.bus_type_id == BusType.id)\
-        .filter(Schedule.journey_date == today).all()
-    
-    return render_template('buses_today.html', schedules=schedules)
+    try:
+        today = datetime.now().date()
+        schedules = Schedule.query.filter(Schedule.journey_date == today).all()
+        
+        # Calculate booked seats for each schedule
+        booked_seats = {}
+        for schedule in schedules:
+            booked_count = Booking.query.filter_by(schedule_id=schedule.id).count()
+            booked_seats[schedule.id] = booked_count
+        
+        return render_template('buses_today.html', schedules=schedules, booked_seats=booked_seats)
+    except Exception as e:
+        print(f"Error loading buses today: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return f"Error loading buses: {str(e)}", 500
 
 @app.route('/book/<int:schedule_id>', methods=['GET', 'POST'])
 @login_required
