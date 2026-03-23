@@ -37,8 +37,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 
 # Stripe Configuration
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_placeholder_remove')  # Test key - change in production
-STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY', 'pk_test_placeholder_remove')  # Test key - change in production
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_placeholder_change_in_production')  # Test key - change in production
+STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY', 'pk_test_placeholder_change_in_production')  # Test key - change in production
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', 'your_account_sid')
