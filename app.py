@@ -838,6 +838,8 @@ def api_bus_location(bus_id):
     }
 
 if __name__ == '__main__':
+    from your_app import app, db
+
     with app.app_context():
         db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
